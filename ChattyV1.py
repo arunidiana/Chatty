@@ -1,3 +1,6 @@
+import tkinter as tk
+
+# --- Chatbot Logik ---
 def chatty_response(user_input):
     user_input = user_input.lower()
 
@@ -10,17 +13,39 @@ def chatty_response(user_input):
     elif "tschüss" in user_input or "bye" in user_input:
         return "Tschüss! Schön, mit dir gequatscht zu haben. :)"
     else:
-        return "Das habe ich leider nicht verstanden. Magst du das anders formulieren?"
+        return "Das habe ich leider nicht verstanden."
 
-def start_chat():
-    print("👋 Hallo, ich bin Chatty – dein kleiner Chatbot! (Tippe 'bye' zum Beenden)")
-    while True:
-        user_input = input("Du: ")
-        if user_input.lower() in ["bye", "tschüss", "auf wiedersehen"]:
-            print("Chatty: Tschüss! Bis zum nächsten Mal! 👋")
-            break
-        response = chatty_response(user_input)
-        print(f"Chatty: {response}")
+# --- GUI ---
+def send_message():
+    user_input = entry.get()
+    if user_input.strip() == "":
+        return
 
-if __name__ == "__main__":
-    start_chat()
+    chat_window.config(state='normal')
+    chat_window.insert(tk.END, "Du: " + user_input + "\n")
+    response = chatty_response(user_input)
+    chat_window.insert(tk.END, "Chatty: " + response + "\n\n")
+    chat_window.config(state='disabled')
+    
+    entry.delete(0, tk.END)
+
+# Fenster einrichten
+root = tk.Tk()
+root.title("Chatty - Dein kleiner Chatbot")
+root.geometry("400x500")
+
+# Chat-Fenster (Textbereich)
+chat_window = tk.Text(root, state='disabled', wrap='word', bg="#F0F0F0", font=("Arial", 12))
+chat_window.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+# Eingabezeile
+entry = tk.Entry(root, font=("Arial", 12))
+entry.pack(padx=10, pady=(0,10), fill=tk.X)
+entry.bind("<Return>", lambda event: send_message())
+
+# Senden-Button
+send_button = tk.Button(root, text="Senden", command=send_message)
+send_button.pack(padx=10, pady=(0, 10))
+
+# Hauptloop starten
+root.mainloop()
