@@ -1,135 +1,225 @@
 import tkinter as tk
+from tkinter import ttk
+# import tkinter.messagebox # Entfernt
 import google.generativeai as genai
-import os                 # Importiere das os-Modul
-from dotenv import load_dotenv # Importiere load_dotenv
+import os
+from dotenv import load_dotenv
+# import textwrap # Entfernt
 
-# --- Lade Umgebungsvariablen aus der .env-Datei ---
+# --- Lade Umgebungsvariablen ---
 load_dotenv()
-
-# --- Hole den API-Key aus den Umgebungsvariablen ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# --- Überprüfe, ob der Key geladen wurde ---
 if not GOOGLE_API_KEY:
-    print("Fehler: GOOGLE_API_KEY wurde nicht in der .env-Datei gefunden oder die Datei fehlt.")
-    print("Stelle sicher, dass eine .env-Datei im selben Verzeichnis wie das Skript existiert")
-    print("und dass sie 'GOOGLE_API_KEY=DEIN_KEY' enthält.")
-    # Optional: Zeige Fehler im GUI an
-    # Wichtig: root muss hier noch nicht existieren, daher besser nur print oder exit()
-    # tk.messagebox.showerror("Konfigurationsfehler", "GOOGLE_API_KEY nicht gefunden.\nÜberprüfe die .env-Datei.")
-    exit() # Beendet das Skript, wenn der Key fehlt
+    print("Fehler: GOOGLE_API_KEY nicht gefunden. Überprüfe die .env-Datei.")
+    exit()
 
 # --- Konfiguriere und initialisiere Gemini ---
 try:
     genai.configure(api_key=GOOGLE_API_KEY)
-
-    # --- Modell initialisieren und Chat-Sitzung starten ---
     model = genai.GenerativeModel("gemini-1.5-pro-latest")
-    # Startet eine Chat-Sitzung, die den Verlauf speichert
-    chat = model.start_chat(history=[])
-    print("Gemini-Modell und Chat-Sitzung erfolgreich initialisiert.")
+    initial_history = [
+        # ... (deine initial_history von vorher - unverändert) ...
+         {
+            "role": "user",
+            "parts": [
+                "Hallo Chatty! Für unser Gespräch gilt: Du bist ein freundlicher Chatbot, der sich ausschließlich auf lockere, alltägliche Unterhaltung konzentriert. "
+                "Bitte vermeide es, Code zu schreiben, komplexe Probleme zu lösen, detaillierte technische Erklärungen zu geben oder spezifische Anweisungen auszuführen, die über eine normale Unterhaltung hinausgehen. "
+                "Wenn du nach solchen Dingen gefragt wirst, weise bitte höflich darauf hin, dass du nur zum Plaudern da bist. Halte deine Antworten gesprächig und freundlich."
+            ]
+        },
+        {
+            "role": "model",
+            "parts": [
+                "Hallo, ich bin Chatty und freue mich auf eine nette, lockere Unterhaltung mit dir. "
+                "Ich werde mich aufs Plaudern konzentrieren und komplexere Anfragen oder Code-Generierung vermeiden. "
+                "Worüber möchtest du gerne quatschen?"
+            ]
+        }
+    ]
+    chat = model.start_chat(history=initial_history)
+    print("Gemini-Modell und Chat-Sitzung (eingeschränkt auf Konversation) erfolgreich initialisiert.")
 
 except Exception as e:
-    # Zeige Fehler im Terminal an, wenn die Initialisierung fehlschlägt
     print(f"Fehler bei der Initialisierung von Gemini: {e}")
     print("Stelle sicher, dass der API-Key in der .env-Datei korrekt und gültig ist.")
-    # Optional: Zeige eine Fehlermeldung im GUI an statt nur zu drucken
-    # Da das GUI hier vielleicht noch nicht initialisiert ist, ist print sicherer.
-    # Wenn du sicherstellst, dass root initialisiert ist, kannst du messagebox verwenden.
-    # try:
-    #    root = tk.Tk()
-    #    root.withdraw() # Verstecke das Hauptfenster für die Fehlermeldung
-    #    tk.messagebox.showerror("Gemini Fehler", f"Fehler bei der Initialisierung:\n{e}\nStelle sicher, dass der API-Key in der .env-Datei korrekt ist.")
-    # except tk.TclError: # Falls Tkinter nicht initialisiert werden kann
-    #     pass # Fehler wurde schon in der Konsole ausgegeben
-    exit() # Beendet das Skript bei Initialisierungsfehler
+    exit()
+
+# --- Hilfsfunktion zum Einfügen von Blasen ---
+def insert_bubble(text_widget, text, tag_name):
+    text_widget.config(state='normal')
+    # Füge Text + eine Leerzeile (für Abstand) mit Tag ein
+    text_widget.insert(tk.END, text + "\n\n", tag_name)
+    text_widget.config(state='disabled')
+    text_widget.see(tk.END)
 
 # --- Funktion für GUI-Nachrichtensenden ---
-def send_message(event=None): # event=None für <Return>-Bindung
+def send_message(event=None):
     user_input = entry.get()
     if user_input.strip() == "":
         return
 
-    # Benutzer-Nachricht im Chat anzeigen
-    chat_window.config(state='normal')
-    chat_window.insert(tk.END, "Du: " + user_input + "\n")
-    chat_window.see(tk.END) # Nach unten scrollen
-    chat_window.config(state='disabled')
+    insert_bubble(chat_window, "Du: " + user_input, "user_bubble")
 
-    # Eingabefeld leeren
     entry.delete(0, tk.END)
-
-    # Eingabe und Button deaktivieren, während auf Antwort gewartet wird
     entry.config(state='disabled')
     send_button.config(state='disabled')
-    root.update_idletasks() # GUI aktualisieren, um Deaktivierung anzuzeigen
+    root.update_idletasks()
 
-    # Antwort von Gemini holen (mit Konversationsverlauf)
     try:
-        # Verwende die Chat-Sitzung, um die Nachricht zu senden
-        # Das 'chat'-Objekt enthält den bisherigen Verlauf
         response = chat.send_message(user_input)
         response_text = response.text.strip()
+        insert_bubble(chat_window, "Chatty: " + response_text, "bot_bubble")
 
     except Exception as e:
-        response_text = f"Fehler mit Gemini: {e}"
-        print(f"Gemini API Error: {e}") # Fehler auch im Terminal anzeigen
-        # Optional: Fehlermeldung im Chatfenster anzeigen
-        chat_window.config(state='normal')
-        chat_window.insert(tk.END, f"Chatty Fehler: {e}\n\n")
-        chat_window.see(tk.END) # Nach unten scrollen
-        chat_window.config(state='disabled')
-        # Eingabe/Button wieder aktivieren, damit der Nutzer es erneut versuchen kann
-        entry.config(state='normal')
-        send_button.config(state='normal')
-        entry.focus()
-        return # Keine "Chatty:" Antwort anzeigen bei Fehler
+        error_text = f"Fehler: {e}"
+        print(f"Gemini API Error: {e}")
+        insert_bubble(chat_window, f"Chatty Fehler: {error_text}", "error_bubble")
 
-    # Chatty-Antwort im Chat anzeigen
-    chat_window.config(state='normal')
-    chat_window.insert(tk.END, "Chatty: " + response_text + "\n\n")
-    chat_window.see(tk.END) # Nach unten scrollen
-    chat_window.config(state='disabled')
-
-    # Eingabe und Button wieder aktivieren
     entry.config(state='normal')
     send_button.config(state='normal')
-    entry.focus() # Cursor wieder ins Eingabefeld setzen
-
+    entry.focus()
 
 # --- GUI-Setup ---
 root = tk.Tk()
-root.title("Chatty (mit Gemini KI & Verlauf)")
-root.geometry("500x600") # Höhe angepasst
+root.title("Chatty (Konversation)")
+root.geometry("550x650")
 
-# --- Chat-Fenster mit Scrollbar ---
-chat_frame = tk.Frame(root)
-scrollbar = tk.Scrollbar(chat_frame) # Scrollbar erstellen
+# --- Style-Definitionen ---
+BG_COLOR = "#C7FAF9"       # Dein gewünschter Hintergrund
+FG_COLOR = "#1E1E1E"       # Dunkler Text
+ACCENT_COLOR = "#007AFF"
+ENTRY_BG_COLOR = "#FFFFFF"
+TEXT_AREA_BG = BG_COLOR    # Textbereich hat jetzt auch den Haupt-Hintergrund
+
+# --- Farben für die Blasen ---
+BUBBLE_COLOR = "#FFFFFF"   # Weiß für normale Blasen
+BUBBLE_FG = "#1E1E1E"      # Textfarbe in den Blasen
+ERROR_BUBBLE_BG = "#FFF0F0" # Sehr helles Rot für Fehlerblasen
+ERROR_BUBBLE_FG = "#D8000C"
+
+FONT_FAMILY = "Segoe UI"
+FONT_SIZE_NORMAL = 10
+FONT_SIZE_LARGE = 11
+BUBBLE_PADDING = 12        # Vertikaler Abstand zwischen den Blasen (ersetzt spacing3)
+
+# --- Hauptfenster-Styling ---
+root.config(bg=BG_COLOR)
+
+# --- ttk Style konfigurieren ---
+style = ttk.Style()
+try:
+    style.theme_use('clam')
+except tk.TclError:
+    print("Theme 'clam' nicht verfügbar, verwende Standard-Theme.")
+
+# Style für TButton, TEntry, TFrame, TScrollbar (unverändert von vorher)
+style.configure("TButton",
+                font=(FONT_FAMILY, FONT_SIZE_NORMAL, "bold"),
+                padding=8, foreground=ENTRY_BG_COLOR, background=ACCENT_COLOR,
+                borderwidth=0, relief="flat")
+style.map("TButton", background=[('active', '#0056b3')])
+style.configure("TEntry",
+                font=(FONT_FAMILY, FONT_SIZE_LARGE), padding=10, foreground=FG_COLOR,
+                fieldbackground=ENTRY_BG_COLOR, borderwidth=1, relief="solid")
+style.configure("TFrame", background=BG_COLOR)
+style.configure("Vertical.TScrollbar", troughcolor=BG_COLOR, background=ACCENT_COLOR, borderwidth=0, arrowsize=0)
+style.map("Vertical.TScrollbar", background=[('active', '#0056b3')])
+
+# --- Chat-Bereich ---
+# Frame mit Außenabstand
+chat_frame = ttk.Frame(root, padding="0", style="TFrame")
+chat_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
+
+scrollbar = ttk.Scrollbar(chat_frame, orient=tk.VERTICAL, style="Vertical.TScrollbar")
+
 chat_window = tk.Text(
     chat_frame,
+    wrap=tk.WORD,
     state='disabled',
-    wrap='word',
-    bg="#F0F0F0",
-    font=("Arial", 12),
-    yscrollcommand=scrollbar.set # Scrollbar mit Textfenster verbinden
+    bg=TEXT_AREA_BG,      # Hintergrund des gesamten Textbereichs
+    fg=FG_COLOR,
+    font=(FONT_FAMILY, FONT_SIZE_LARGE),
+    padx=10,              # Horizontaler Innenabstand für den Textbereich
+    pady=10,              # Vertikaler Innenabstand
+    yscrollcommand=scrollbar.set,
+    relief="flat",        # Kein Rahmen um den Textbereich selbst
+    borderwidth=0,
+    highlightthickness=0
 )
-scrollbar.config(command=chat_window.yview) # Scrollbar-Aktion definieren
+scrollbar.config(command=chat_window.yview)
 
-# Elemente im Frame platzieren
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 chat_window.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-chat_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-# --- Ende Chat-Fenster ---
 
-entry = tk.Entry(root, font=("Arial", 12))
-entry.pack(padx=10, pady=(0, 5), fill=tk.X)
-# Bindet die Enter-Taste an die send_message Funktion
-entry.bind("<Return>", send_message) # Event-Objekt wird übergeben
+# --- Tag-Konfigurationen für Sprechblasen ---
+# Hinweis: Keine runden Ecken möglich mit Text-Tags. Wir verwenden keinen Rahmen.
 
-send_button = tk.Button(root, text="Senden", command=send_message)
-send_button.pack(padx=10, pady=(0, 10))
+# Gemeinsame Optionen für Blasen-Padding (Innenabstand)
+bubble_internal_padx = 8
+bubble_internal_pady = 5
 
-# Fokus auf das Eingabefeld setzen, wenn das Fenster startet
+# Benutzer-Blase (rechts)
+chat_window.tag_configure("user_bubble",
+                          background=BUBBLE_COLOR,
+                          foreground=BUBBLE_FG,
+                          justify=tk.RIGHT,
+                          lmargin1=80,  # Schiebt nach rechts
+                          lmargin2=80,
+                          rmargin=10,   # Rechter Abstand zum Rand
+                          spacing3=BUBBLE_PADDING, # Vertikaler Abstand NACH der Blase
+                          wrap=tk.WORD,
+                          # Keine runden Ecken: relief=tk.FLAT (Standard) und borderwidth=0
+                          borderwidth=0,
+                          font=(FONT_FAMILY, FONT_SIZE_NORMAL),
+                          # Innenabstand der Blase (simuliert durch Rand um den Text)
+                          # Wichtig: Funktioniert nur gut mit wrap=NONE, daher nicht ideal
+                          # Besser: Text leicht einrücken, siehe unten bei `insert_bubble` (optional)
+                          # oder padx/pady im Text-Widget global setzen.
+                          )
+
+# Bot-Blase (links)
+chat_window.tag_configure("bot_bubble",
+                          background=BUBBLE_COLOR,
+                          foreground=BUBBLE_FG,
+                          justify=tk.LEFT,
+                          lmargin1=10,   # Linker Abstand zum Rand
+                          lmargin2=10,
+                          rmargin=80,   # Schiebt nach links
+                          spacing3=BUBBLE_PADDING, # Vertikaler Abstand NACH der Blase
+                          wrap=tk.WORD,
+                          borderwidth=0,
+                          font=(FONT_FAMILY, FONT_SIZE_NORMAL),
+                          )
+
+# Fehler-Blase (links, andere Farbe)
+chat_window.tag_configure("error_bubble",
+                          background=ERROR_BUBBLE_BG,
+                          foreground=ERROR_BUBBLE_FG,
+                          justify=tk.LEFT,
+                          lmargin1=10,
+                          lmargin2=10,
+                          rmargin=80,
+                          spacing3=BUBBLE_PADDING,
+                          wrap=tk.WORD,
+                          borderwidth=0,
+                          font=(FONT_FAMILY, FONT_SIZE_NORMAL, "italic"))
+
+# --- Eingabe-Bereich ---
+input_frame = ttk.Frame(root, padding="10 10 10 10", style="TFrame")
+input_frame.pack(fill=tk.X, padx=10, pady=10)
+
+entry = ttk.Entry(input_frame, font=(FONT_FAMILY, FONT_SIZE_LARGE), style="TEntry")
+entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4)
+entry.bind("<Return>", send_message)
+
+send_button = ttk.Button(input_frame, text="Senden", command=send_message, style="TButton")
+send_button.pack(side=tk.LEFT, padx=(10, 0))
+
 entry.focus()
+
+# --- Zeige die initiale "Nachricht" des Bots im Chatfenster als Blase an ---
+if initial_history and len(initial_history) > 1 and initial_history[1]['role'] == 'model':
+    insert_bubble(chat_window, "Chatty: " + initial_history[1]['parts'][0], "bot_bubble")
 
 root.mainloop()
