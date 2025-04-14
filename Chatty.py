@@ -1,11 +1,25 @@
 import tkinter as tk
 import google.generativeai as genai
+import os                 # Importiere das os-Modul
+from dotenv import load_dotenv # Importiere load_dotenv
 
-# --- API-Key direkt im Code (NUR FÜR PRIVATE NUTZUNG!) ---
-# WARNUNG: Dies ist ein Sicherheitsrisiko, wenn der Code geteilt wird.
-# Stelle sicher, dass dieser Code niemals veröffentlicht oder weitergegeben wird.
-GOOGLE_API_KEY = "" # Füge deinen Key hier ein
+# --- Lade Umgebungsvariablen aus der .env-Datei ---
+load_dotenv()
 
+# --- Hole den API-Key aus den Umgebungsvariablen ---
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# --- Überprüfe, ob der Key geladen wurde ---
+if not GOOGLE_API_KEY:
+    print("Fehler: GOOGLE_API_KEY wurde nicht in der .env-Datei gefunden oder die Datei fehlt.")
+    print("Stelle sicher, dass eine .env-Datei im selben Verzeichnis wie das Skript existiert")
+    print("und dass sie 'GOOGLE_API_KEY=DEIN_KEY' enthält.")
+    # Optional: Zeige Fehler im GUI an
+    # Wichtig: root muss hier noch nicht existieren, daher besser nur print oder exit()
+    # tk.messagebox.showerror("Konfigurationsfehler", "GOOGLE_API_KEY nicht gefunden.\nÜberprüfe die .env-Datei.")
+    exit() # Beendet das Skript, wenn der Key fehlt
+
+# --- Konfiguriere und initialisiere Gemini ---
 try:
     genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -18,9 +32,16 @@ try:
 except Exception as e:
     # Zeige Fehler im Terminal an, wenn die Initialisierung fehlschlägt
     print(f"Fehler bei der Initialisierung von Gemini: {e}")
-    print("Stelle sicher, dass der API-Key korrekt und gültig ist.")
+    print("Stelle sicher, dass der API-Key in der .env-Datei korrekt und gültig ist.")
     # Optional: Zeige eine Fehlermeldung im GUI an statt nur zu drucken
-    # tk.messagebox.showerror("Gemini Fehler", f"Fehler bei der Initialisierung:\n{e}")
+    # Da das GUI hier vielleicht noch nicht initialisiert ist, ist print sicherer.
+    # Wenn du sicherstellst, dass root initialisiert ist, kannst du messagebox verwenden.
+    # try:
+    #    root = tk.Tk()
+    #    root.withdraw() # Verstecke das Hauptfenster für die Fehlermeldung
+    #    tk.messagebox.showerror("Gemini Fehler", f"Fehler bei der Initialisierung:\n{e}\nStelle sicher, dass der API-Key in der .env-Datei korrekt ist.")
+    # except tk.TclError: # Falls Tkinter nicht initialisiert werden kann
+    #     pass # Fehler wurde schon in der Konsole ausgegeben
     exit() # Beendet das Skript bei Initialisierungsfehler
 
 # --- Funktion für GUI-Nachrichtensenden ---
@@ -53,6 +74,16 @@ def send_message(event=None): # event=None für <Return>-Bindung
     except Exception as e:
         response_text = f"Fehler mit Gemini: {e}"
         print(f"Gemini API Error: {e}") # Fehler auch im Terminal anzeigen
+        # Optional: Fehlermeldung im Chatfenster anzeigen
+        chat_window.config(state='normal')
+        chat_window.insert(tk.END, f"Chatty Fehler: {e}\n\n")
+        chat_window.see(tk.END) # Nach unten scrollen
+        chat_window.config(state='disabled')
+        # Eingabe/Button wieder aktivieren, damit der Nutzer es erneut versuchen kann
+        entry.config(state='normal')
+        send_button.config(state='normal')
+        entry.focus()
+        return # Keine "Chatty:" Antwort anzeigen bei Fehler
 
     # Chatty-Antwort im Chat anzeigen
     chat_window.config(state='normal')
