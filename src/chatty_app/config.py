@@ -33,7 +33,7 @@ FONT_SIZE_XLARGE = 18
 
 # Layout & Größen
 LOGO_SIZE = (150, 150)
-TOP_BAR_LOGO_SIZE = (30, 30)
+TOP_BAR_LOGO_SIZE = (120, 120)
 SEPARATOR_LENGTH = 30 # Länge der Trennlinie
 
 # Gemini Konfiguration

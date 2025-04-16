@@ -3,7 +3,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
-import config # Importiere config für Farben und Pfade
+from chatty_app import config # Importiere config für Farben und Pfade
 
 def load_image(path, size):
     """Lädt ein Bild, skaliert es und gibt ein Tkinter-kompatibles Objekt zurück."""
