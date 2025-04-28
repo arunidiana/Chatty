@@ -2,6 +2,7 @@
 import os
 
 # Pfade
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Gibt das 'src' Verzeichnis
 # Oder, wenn run_chatty.py außerhalb von src liegt und das Projekt-Root das Arbeitsverzeichnis ist:
 # BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) # Projekt-Root
@@ -9,6 +10,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Gibt da
 # Für jetzt nehmen wir an, der assets-Ordner liegt eine Ebene über src/
 ASSETS_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'assets'))
 LOGO_PATH = os.path.join(ASSETS_DIR, "Logo.png")
+LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "log.txt")
 
 
 # Farben

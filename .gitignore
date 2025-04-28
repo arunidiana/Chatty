@@ -3,3 +3,5 @@
 __pycache__/
 *.pyc
 # Füge hier weitere Dateien/Ordner hinzu, die ignoriert werden sollen
+
+log.txt

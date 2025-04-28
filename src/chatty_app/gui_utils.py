@@ -5,6 +5,18 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from chatty_app import config # Importiere config für Farben und Pfade
 
+def log_message(speaker, message):
+    """Schreibt eine einfache Nachricht in die Log-Datei."""
+    try:
+        # Einfacher Log-Eintrag: Sprecher: Nachricht
+        log_entry = f"{speaker}: {message}\n"
+        # Öffne im Append-Modus ('a') mit UTF-8 Encoding
+        # Verwendet den in config.py definierten Pfad
+        with open(config.LOG_FILE_PATH, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+    except Exception as e:
+        print(f"Fehler beim Schreiben in die Log-Datei ({config.LOG_FILE_PATH}): {e}")
+
 def load_image(path, size):
     """Lädt ein Bild, skaliert es und gibt ein Tkinter-kompatibles Objekt zurück."""
     try:
