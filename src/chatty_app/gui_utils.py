@@ -1,13 +1,11 @@
 # src/chatty_app/gui_utils.py
-import os
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk # ttk wird für Style benötigt
 from PIL import Image, ImageTk
-from chatty_app import config # Importiere config für Farben und Pfade
-
+import os
+from . import config
 
 def load_image(path, size):
-    """Lädt ein Bild, skaliert es und gibt ein Tkinter-kompatibles Objekt zurück."""
     try:
         if os.path.exists(path):
             img_pil = Image.open(path)
@@ -24,31 +22,33 @@ def load_image(path, size):
         print(f"Fehler beim Laden des Bildes {path}: {e}")
         return None
 
-def insert_bubble(text_widget, text, tag_name, is_first_message=False):
-    """Fügt eine formatierte Textblase (mit optionaler Trennlinie) in das Text-Widget ein."""
+def insert_bubble(text_widget, text, tag_name, is_first_message=False, username=None):
     text_widget.config(state='normal')
     if not is_first_message:
         separator_text = "─" * config.SEPARATOR_LENGTH
         text_widget.insert(tk.END, f"\n{separator_text}\n\n", "separator_line")
-    text_widget.insert(tk.END, text + "\n", tag_name)
+    display_text = text
+    if username and tag_name == "user_bubble":
+        # Extrahiere die eigentliche Nachricht nach dem ersten ':'
+        actual_message = text.split(':', 1)[-1].strip() if ':' in text else text
+        display_text = f"{username}: {actual_message}"
+
+    text_widget.insert(tk.END, display_text + "\n", tag_name)
     text_widget.config(state='disabled')
     text_widget.see(tk.END)
 
 def configure_tags(text_widget):
-    """Konfiguriert die Tags für Textblasen und Trennlinien."""
     text_widget.tag_configure("user_bubble", background=config.BUBBLE_COLOR, foreground=config.BUBBLE_FG, justify=tk.RIGHT, lmargin1=80, lmargin2=80, rmargin=10, wrap=tk.WORD, borderwidth=0, font=(config.FONT_FAMILY, config.FONT_SIZE_NORMAL))
     text_widget.tag_configure("bot_bubble", background=config.BUBBLE_COLOR, foreground=config.BUBBLE_FG, justify=tk.LEFT, lmargin1=10, lmargin2=10, rmargin=80, wrap=tk.WORD, borderwidth=0, font=(config.FONT_FAMILY, config.FONT_SIZE_NORMAL))
     text_widget.tag_configure("error_bubble", background=config.ERROR_BUBBLE_BG, foreground=config.ERROR_BUBBLE_FG, justify=tk.LEFT, lmargin1=10, lmargin2=10, rmargin=80, wrap=tk.WORD, borderwidth=0, font=(config.FONT_FAMILY, config.FONT_SIZE_NORMAL, "italic"))
     text_widget.tag_configure("separator_line", foreground=config.SEPARATOR_COLOR, justify=tk.CENTER, font=(config.FONT_FAMILY, config.FONT_SIZE_SMALL))
 
 def configure_styles():
-    """Konfiguriert die ttk-Styles für die Anwendung."""
     style = ttk.Style()
     try:
         style.theme_use('clam')
     except tk.TclError:
         print("Theme 'clam' nicht verfügbar, verwende Standard-Theme.")
-
     style.configure("TButton", font=(config.FONT_FAMILY, config.FONT_SIZE_NORMAL, "bold"), padding=8, foreground=config.ENTRY_BG_COLOR, background=config.ACCENT_COLOR, borderwidth=0, relief="flat")
     style.map("TButton", background=[('active', '#0056b3')])
     style.configure("Exit.TButton", font=(config.FONT_FAMILY, config.FONT_SIZE_SMALL), padding=5, foreground=config.ENTRY_BG_COLOR, background=config.EXIT_COLOR, borderwidth=0, relief="flat")

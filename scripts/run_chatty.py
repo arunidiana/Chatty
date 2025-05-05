@@ -3,14 +3,11 @@ import tkinter as tk
 import sys
 import os
 
-# Füge das 'src' Verzeichnis zum Python-Pfad hinzu, damit chatty_app gefunden wird
-# Passe dies an, wenn deine Struktur anders ist
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 src_path = os.path.join(project_root, 'src')
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
-# Importiere die Hauptanwendungsklasse
 try:
     from chatty_app.main_app import ChattyApp
 except ImportError as e:
