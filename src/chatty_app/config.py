@@ -1,19 +1,18 @@
 # src/chatty_app/config.py
 import os
 
-# Pfade
+# --- Pfade ---
+# Definiere das Projekt-Root-Verzeichnis (eine Ebene über dem 'src'-Verzeichnis)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Gibt das 'src' Verzeichnis
-# Oder, wenn run_chatty.py außerhalb von src liegt und das Projekt-Root das Arbeitsverzeichnis ist:
-# BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) # Projekt-Root
-# Sicherer: Den Pfad explizit übergeben oder relativ zum Skript im scripts-Ordner machen
-# Für jetzt nehmen wir an, der assets-Ordner liegt eine Ebene über src/
-ASSETS_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'assets'))
+ASSETS_DIR = os.path.join(PROJECT_ROOT, 'assets')
 LOGO_PATH = os.path.join(ASSETS_DIR, "Logo.png")
-LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "log.txt")
+# LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "log.txt") # Alte lokale Log-Datei, nicht mehr primär genutzt
 
+# --- Firebase Konfiguration --- NEU ---
+FIREBASE_SERVICE_ACCOUNT_KEY_PATH = os.path.join(PROJECT_ROOT, "firebase-service-account.json") # Pfad zur Schlüsseldatei
+FIREBASE_COLLECTION_NAME = "chat_logs" # Name der Sammlung in Firestore
 
-# Farben
+# --- Farben ---
 BG_COLOR = "#C7FAF9"
 FG_COLOR = "#1E1E1E"
 ACCENT_COLOR = "#007AFF"
@@ -26,19 +25,20 @@ ERROR_BUBBLE_BG = "#FFF0F0"
 ERROR_BUBBLE_FG = "#D8000C"
 SEPARATOR_COLOR = "#CCCCCC"
 
-# Schriftarten und Größen
+# --- Schriftarten und Größen ---
 FONT_FAMILY = "Segoe UI"
 FONT_SIZE_SMALL = 9
 FONT_SIZE_NORMAL = 11
 FONT_SIZE_LARGE = 14
 FONT_SIZE_XLARGE = 18
 
-# Layout & Größen
+# --- Layout & Größen ---
 LOGO_SIZE = (150, 150)
-TOP_BAR_LOGO_SIZE = (120, 120)
+# TOP_BAR_LOGO_SIZE war im Ausgangscode 120x120, im Firebase-Beispiel 30x30. Ich nehme 30x30 an.
+TOP_BAR_LOGO_SIZE = (30, 30)
 SEPARATOR_LENGTH = 30 # Länge der Trennlinie
 
-# Gemini Konfiguration
+# --- Gemini Konfiguration ---
 INITIAL_HISTORY = [
      {
             "role": "user",
@@ -57,7 +57,9 @@ INITIAL_HISTORY = [
         }
 ]
 
-# API Key Handling (Laden direkt hier, um es zentral zu haben)
+# --- API Key Handling ---
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(BASE_DIR, '..', '.env')) # Suche .env im Projekt-Root
+# Suche .env im Projekt-Root
+dotenv_path = os.path.join(PROJECT_ROOT, '.env')
+load_dotenv(dotenv_path=dotenv_path)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
