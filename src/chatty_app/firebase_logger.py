@@ -156,3 +156,16 @@ if __name__ == '__main__':
              print(f"[{ts}] {log.get('username','System')}/{log.get('speaker', 'N/A')}: {log.get('message', 'N/A')}")
     else:
         print(f"Initialisierung fehlgeschlagen: {init_error}")
+
+        # --- NEUE FUNKTION HINZUFÜGEN ---
+def get_db_client():
+    """Gibt den initialisierten Firestore DB Client zurück."""
+    global db
+    if db is None:
+        # Dieser Fall sollte idealerweise nicht eintreten, wenn initialize_firebase()
+        # korrekt in main_app aufgerufen wird, aber als Sicherheitsnetz:
+        print("WARNUNG: get_db_client() aufgerufen, bevor die DB vollständig initialisiert wurde.")
+        # Man könnte hier versuchen, erneut zu initialisieren, aber das ist riskant.
+        # Sicherer ist, None zurückzugeben und den Fehler im aufrufenden Code zu behandeln.
+        return None
+    return db
