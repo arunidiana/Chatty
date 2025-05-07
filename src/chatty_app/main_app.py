@@ -6,10 +6,11 @@ from . import config
 from . import gui_utils
 from . import ui_components
 from . import gemini_interface
-from . import firebase_logger
+from . import firebase_logger # Beinhaltet jetzt Benutzerfunktionen
 
 class ChattyApp:
     def __init__(self, root):
+        # (init bleibt größtenteils gleich)
         self.root = root
         self.root.title("Chatty")
         self.root.geometry("550x650")
@@ -25,14 +26,15 @@ class ChattyApp:
 
         self.firebase_initialized, fb_error = firebase_logger.initialize_firebase()
         if not self.firebase_initialized:
-             messagebox.showwarning("Firebase Fehler", f"Firebase nicht initialisiert:\n{fb_error}\nLogging ist deaktiviert.")
+             messagebox.showwarning("Firebase Fehler", f"Firebase nicht initialisiert:\n{fb_error}\nLogging und Benutzer-Speicherung sind deaktiviert.")
 
         self.chat_window = None
         self.entry = None
         self.send_button = None
         self.exit_button = None
         self.username_entry = None
-        self.current_user = None
+        self.current_user = None # Speichert den Original-Benutzernamen
+        self.current_user_id = None # Speichert die Firestore User Document ID
 
         self.start_frame, self.username_entry = ui_components.create_start_frame(self.root, self._start_chat_button_clicked)
 
@@ -46,14 +48,35 @@ class ChattyApp:
         self._show_start_screen()
 
     def _start_chat_button_clicked(self):
-        username = self.username_entry.get().strip()
-        if not username:
+        username_raw = self.username_entry.get().strip()
+        if not username_raw:
             messagebox.showwarning("Eingabe fehlt", "Bitte gib deinen Namen ein.")
             return
-        self.current_user = username
-        print(f"Benutzer '{self.current_user}' startet den Chat.")
+
+        self.current_user = username_raw
+
+        # Füge Benutzer zur Firestore 'users' Collection hinzu oder aktualisiere ihn
+        user_added_or_updated = False
         if self.firebase_initialized:
-            firebase_logger.log_to_firestore("System", f"Chat gestartet", username=self.current_user)
+            success_user_op, user_doc_id = firebase_logger.add_or_update_user(self.current_user)
+            if success_user_op:
+                self.current_user_id = user_doc_id # Speichere die User ID
+                user_added_or_updated = True
+                print(f"Benutzer '{self.current_user}' (ID: {self.current_user_id}) in Firestore registriert/aktualisiert.")
+                firebase_logger.log_to_firestore("System", f"Chat gestartet", username=self.current_user)
+            else:
+                messagebox.showerror("Firebase Fehler", "Benutzer konnte nicht in Firebase gespeichert werden.")
+                # Optional: Hier entscheiden, ob der Chat trotzdem gestartet werden soll
+                # return # Verhindert Chat-Start, wenn User-Speicherung fehlschlägt
+
+        # Wenn Firebase nicht initialisiert war oder User-Speicherung fehlschlug,
+        # aber wir den Chat trotzdem starten wollen:
+        if not user_added_or_updated and not self.firebase_initialized:
+            print(f"Benutzer '{self.current_user}' startet den Chat (Firebase nicht initialisiert).")
+        elif not user_added_or_updated and self.firebase_initialized:
+             print(f"Benutzer '{self.current_user}' startet den Chat (Fehler bei User-Speicherung in Firebase).")
+
+
         self._show_chat_screen()
 
     def _show_start_screen(self):
@@ -61,6 +84,7 @@ class ChattyApp:
         self.start_frame.pack(fill=tk.BOTH, expand=True)
         self.root.title("Chatty - Start")
         self.current_user = None
+        self.current_user_id = None # User ID auch zurücksetzen
         if self.username_entry:
             self.username_entry.delete(0, tk.END)
 
@@ -94,6 +118,9 @@ class ChattyApp:
         self.entry.focus()
 
     def _send_message_command(self):
+        # (Logik zum Senden von Nachrichten bleibt gleich,
+        #  firebase_logger.log_to_firestore verwendet self.current_user
+        #  bereits für das 'username'-Feld im Log-Dokument)
         if not self.current_user:
              print("Fehler: Kein Benutzer für das Senden der Nachricht vorhanden.")
              return
@@ -123,7 +150,9 @@ class ChattyApp:
 
         self._set_chat_ui_state('normal')
 
+
     def _set_chat_ui_state(self, state):
+        # (Code unverändert)
         if self.entry: self.entry.config(state=state)
         if self.send_button: self.send_button.config(state=state)
         if self.exit_button: self.exit_button.config(state=state)
@@ -133,8 +162,9 @@ class ChattyApp:
 
     def _on_closing(self):
         print("Anwendung wird geschlossen.")
+        username_to_log = self.current_user or "Unbekannt"
         if self.firebase_initialized:
-            firebase_logger.log_to_firestore("System", "Anwendung geschlossen.", username=self.current_user or "Unbekannt")
+            firebase_logger.log_to_firestore("System", "Anwendung geschlossen.", username=username_to_log)
         self.root.quit()
         self.root.destroy()
 

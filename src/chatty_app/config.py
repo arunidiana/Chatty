@@ -5,11 +5,12 @@ from dotenv import load_dotenv
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 ASSETS_DIR = os.path.join(PROJECT_ROOT, 'assets')
 LOGO_PATH = os.path.join(ASSETS_DIR, "Logo.png")
-# LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "log.txt")
 
 FIREBASE_SERVICE_ACCOUNT_KEY_PATH = os.path.join(PROJECT_ROOT, "firebase-service-account.json")
-FIREBASE_COLLECTION_NAME = "chat_logs"
+FIREBASE_LOG_COLLECTION_NAME = "chat_logs"  # Umbenannt für Klarheit
+FIREBASE_USERS_COLLECTION_NAME = "users" # <-- NEU: Collection für Benutzer
 
+# ... (Rest von config.py bleibt gleich) ...
 BG_COLOR = "#C7FAF9"
 FG_COLOR = "#1E1E1E"
 ACCENT_COLOR = "#007AFF"
@@ -29,7 +30,7 @@ FONT_SIZE_LARGE = 14
 FONT_SIZE_XLARGE = 18
 
 LOGO_SIZE = (150, 150)
-TOP_BAR_LOGO_SIZE = (120, 120)
+TOP_BAR_LOGO_SIZE = (30, 30)
 SEPARATOR_LENGTH = 30
 
 INITIAL_HISTORY = [
