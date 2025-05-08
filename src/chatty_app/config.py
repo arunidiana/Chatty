@@ -37,8 +37,8 @@ TOP_BAR_LOGO_SIZE = (30, 30)
 # SEPARATOR_LENGTH = 30 # Nicht mehr benötigt
 
 # --- NEUE Bubble Styling Konstanten ---
-BUBBLE_BORDER_RADIUS = "15px" # Radius für abgerundete Ecken
-BUBBLE_VERTICAL_SPACING = "10px" # Abstand zwischen den Bubbles (ersetzt die Linie)
+BUBBLE_BORDER_RADIUS = "60px" # Radius für abgerundete Ecken
+BUBBLE_VERTICAL_SPACING = "100px" # Abstand zwischen den Bubbles (ersetzt die Linie)
 
 # --- Gemini Konfiguration (unverändert) ---
 INITIAL_HISTORY = [

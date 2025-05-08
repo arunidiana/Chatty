@@ -88,14 +88,6 @@ class ChattyApp(QMainWindow):
             self.entry.returnPressed.connect(self._send_message_command)
 
     def _apply_styles(self):
-        if self.login_button: self.login_button.setObjectName("LoginButton")
-        if self.register_button: self.register_button.setObjectName("RegisterButton")
-        if self.exit_button: self.exit_button.setObjectName("BackButton")
-        if self.send_button: self.send_button.setObjectName("SendButton")
-        if self.chat_window: self.chat_window.setObjectName("ChatWindow")
-        if self.start_screen_widgets and self.start_screen_widgets.get("welcome_label"):
-             self.start_screen_widgets["welcome_label"].setObjectName("WelcomeLabel")
-
         stylesheet = f"""
             QWidget {{
                 font-family: "{config.FONT_FAMILY}";
@@ -300,14 +292,13 @@ class ChattyApp(QMainWindow):
         message_html = escape(message_text).replace('\n', '<br>')
 
         html_content = f"""
-        <div style="text-align: {alignment}; margin-left: {margin_left}; margin-right: {margin_right}; margin-bottom: {config.BUBBLE_VERTICAL_SPACING};">
-            <div style="display: inline-block; background-color: {background_color}; color: {text_color}; padding: 8px 12px; border-radius: {config.BUBBLE_BORDER_RADIUS}; text-align: left; max-width: 80%;">
+        <div style="text-align: {alignment}; margin-left: {margin_left}; margin-right: {margin_right}; margin-bottom: {getattr(config, 'BUBBLE_VERTICAL_SPACING', '10px')};">
+            <div style="display: inline-block; background-color: {background_color}; color: {text_color}; padding: 8px 12px; border-radius: {getattr(config, 'BUBBLE_BORDER_RADIUS', '15px')}; text-align: left; max-width: 80%;">
                 <b>{escape(speaker)}:</b><br>
                 {message_html}
             </div>
         </div>
         """
-
         cursor = self.chat_window.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         self.chat_window.setTextCursor(cursor)
