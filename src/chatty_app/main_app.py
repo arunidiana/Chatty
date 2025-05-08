@@ -1,90 +1,68 @@
 # src/chatty_app/main_app.py
 import sys
 import os
-# import tkinter # Wird nicht mehr benötigt
-# from tkinter import messagebox # Ersetzt durch QMessageBox
-
-# --- PyQt6 Imports ---
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QMessageBox, QStackedWidget,
-    QTextEdit # Hinzugefügt für Typ-Hinweis, optional
+    QTextEdit, QLineEdit, QPushButton
 )
-from PyQt6.QtCore import Qt, QTimer # QTimer für update_idletasks Äquivalent (optional)
-from PyQt6.QtGui import QTextCursor # Zum Scrollen
-
-# --- Lokale Imports ---
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QTextCursor
+from html import escape
 try:
     from . import config
-    # gui_utils wird für configure_tags und load_image in ui_components benötigt
     from . import gui_utils
-    from . import ui_components_qt as ui_components # Stelle sicher, dass ui_components auch für PyQt angepasst ist
+    from . import ui_components_qt as ui_components
     from . import gemini_interface
     from . import firebase_logger
-    # Authentifizierung ist jetzt integriert
-    from firebase_admin import firestore # Für SERVER_TIMESTAMP
+    from firebase_admin import firestore
 except ImportError as e:
     print(f"Import-Fehler in main_app.py: {e}")
-    print("Stelle sicher, dass alle .py-Dateien im 'chatty_app'-Ordner sind und __init__.py existiert.")
-    print("Stelle sicher, dass ui_components in ui_components_qt umbenannt wurde oder passe den Import an.")
     sys.exit(1)
 
-
 class ChattyApp(QMainWindow):
-    def __init__(self):
+    def __init__(self, root=None):
         super().__init__()
 
         self.current_user = None
         self.current_user_id = None
 
-        # --- Initialisierungen ---
         self.firebase_initialized, fb_error = firebase_logger.initialize_firebase()
         if not self.firebase_initialized:
-             # Verwende QTimer, um QMessageBox nach dem Hauptfenster anzuzeigen
              QTimer.singleShot(100, lambda: QMessageBox.warning(self, "Firebase Fehler", f"Firebase nicht initialisiert:\n{fb_error}\nAuthentifizierung und Logging sind deaktiviert."))
 
         if not config.GOOGLE_API_KEY:
-             # Kritischer Fehler, zeige sofort an und beende später
              QMessageBox.critical(None, "Fehler", "GOOGLE_API_KEY nicht gefunden.\nÜberprüfe die .env-Datei im Projekt-Root.")
-             # Beende die Anwendung sauber nach der Initialisierung
-             QTimer.singleShot(0, sys.exit) # Beendet die Event-Schleife später
-             return # Verhindert weitere Initialisierung
+             QTimer.singleShot(0, sys.exit)
+             return
 
-        # --- Hauptfenster ---
         self.setWindowTitle("Chatty")
         self.setGeometry(200, 200, 550, 650)
-        # Stylesheet wird in _apply_styles gesetzt
 
-        # --- Zentrales Widget und Layout ---
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- Stacked Widget ---
         self.stacked_widget = QStackedWidget()
         self.main_layout.addWidget(self.stacked_widget)
 
-        # --- UI Referenzen ---
         self.start_screen_widgets = None
         self.chat_screen_widgets = None
-        self.username_entry = None
-        self.password_entry = None
-        self.login_button = None
-        self.register_button = None
-        self.chat_window: QTextEdit | None = None # Typ-Hinweis hinzugefügt
-        self.entry = None
-        self.send_button = None
-        self.exit_button = None
+        self.username_entry: QLineEdit | None = None
+        self.password_entry: QLineEdit | None = None
+        self.login_button: QPushButton | None = None
+        self.register_button: QPushButton | None = None
+        self.chat_window: QTextEdit | None = None
+        self.entry: QLineEdit | None = None
+        self.send_button: QPushButton | None = None
+        self.exit_button: QPushButton | None = None
 
-        # --- UI Erstellen und Stylen ---
         self._create_ui()
-        self._apply_styles() # Styles nach dem Erstellen anwenden
+        self._apply_styles()
 
-        # --- Initialen Bildschirm anzeigen ---
         self._show_start_screen()
 
     def _create_ui(self):
-        """Erstellt die UI-Widgets und fügt sie zum StackedWidget hinzu."""
         self.start_screen_widgets = ui_components.create_start_widget(
             login_callback=self._login_clicked,
             register_callback=self._register_clicked
@@ -97,7 +75,6 @@ class ChattyApp(QMainWindow):
         )
         self.stacked_widget.addWidget(self.chat_screen_widgets["main_widget"])
 
-        # Referenzen holen
         self.username_entry = self.start_screen_widgets.get("username_entry")
         self.password_entry = self.start_screen_widgets.get("password_entry")
         self.login_button = self.start_screen_widgets.get("login_button")
@@ -107,19 +84,15 @@ class ChattyApp(QMainWindow):
         self.send_button = self.chat_screen_widgets.get("send_button")
         self.exit_button = self.chat_screen_widgets.get("exit_button")
 
-        # Enter-Taste im Chat-Eingabefeld verbinden
         if self.entry:
             self.entry.returnPressed.connect(self._send_message_command)
 
     def _apply_styles(self):
-        """Wendet globale oder spezifische Stylesheets an."""
-        # Objekt-Namen setzen, bevor das Stylesheet angewendet wird
         if self.login_button: self.login_button.setObjectName("LoginButton")
         if self.register_button: self.register_button.setObjectName("RegisterButton")
         if self.exit_button: self.exit_button.setObjectName("BackButton")
         if self.send_button: self.send_button.setObjectName("SendButton")
         if self.chat_window: self.chat_window.setObjectName("ChatWindow")
-        # Labels benötigen auch Namen für spezifische Styles
         if self.start_screen_widgets and self.start_screen_widgets.get("welcome_label"):
              self.start_screen_widgets["welcome_label"].setObjectName("WelcomeLabel")
 
@@ -132,74 +105,43 @@ class ChattyApp(QMainWindow):
                 background-color: {config.BG_COLOR};
             }}
             QPushButton#LoginButton, QPushButton#RegisterButton {{
-                font-size: {config.FONT_SIZE_LARGE}pt;
-                font-weight: bold;
-                padding: 15px;
-                background-color: {config.ACCENT_COLOR};
-                color: {config.ENTRY_BG_COLOR};
-                border: none;
-                border-radius: 5px;
+                font-size: {config.FONT_SIZE_LARGE}pt; font-weight: bold; padding: 15px;
+                background-color: {config.ACCENT_COLOR}; color: {config.ENTRY_BG_COLOR};
+                border: none; border-radius: 5px;
             }}
-            QPushButton#LoginButton:hover, QPushButton#RegisterButton:hover {{
-                background-color: #0056b3;
-            }}
-            QPushButton#LoginButton:pressed, QPushButton#RegisterButton:pressed {{
-                background-color: #004085;
-            }}
+            QPushButton#LoginButton:hover, QPushButton#RegisterButton:hover {{ background-color: #0056b3; }}
+            QPushButton#LoginButton:pressed, QPushButton#RegisterButton:pressed {{ background-color: #004085; }}
             QPushButton#BackButton {{
-                font-size: {config.FONT_SIZE_SMALL}pt;
-                padding: 5px;
-                background-color: {config.EXIT_COLOR};
-                color: {config.ENTRY_BG_COLOR};
-                border: none;
-                border-radius: 3px;
+                font-size: {config.FONT_SIZE_SMALL}pt; padding: 5px;
+                background-color: {config.EXIT_COLOR}; color: {config.ENTRY_BG_COLOR};
+                border: none; border-radius: 3px;
             }}
-             QPushButton#BackButton:hover {{
-                background-color: #808080;
-            }}
-             QPushButton#BackButton:pressed {{
-                background-color: #696969;
-            }}
+             QPushButton#BackButton:hover {{ background-color: #808080; }}
+             QPushButton#BackButton:pressed {{ background-color: #696969; }}
             QPushButton#SendButton {{
-                 font-size: {config.FONT_SIZE_NORMAL}pt;
-                 font-weight: bold;
-                 padding: 8px;
-                 background-color: {config.ACCENT_COLOR};
-                 color: {config.ENTRY_BG_COLOR};
-                 border: none;
-                 border-radius: 5px;
+                 font-size: {config.FONT_SIZE_NORMAL}pt; font-weight: bold; padding: 8px;
+                 background-color: {config.ACCENT_COLOR}; color: {config.ENTRY_BG_COLOR};
+                 border: none; border-radius: 5px;
             }}
-            QPushButton#SendButton:hover {{
-                 background-color: #0056b3;
-            }}
-            QPushButton#SendButton:pressed {{
-                 background-color: #004085;
-            }}
+            QPushButton#SendButton:hover {{ background-color: #0056b3; }}
+            QPushButton#SendButton:pressed {{ background-color: #004085; }}
             QLineEdit {{
-                font-size: {config.FONT_SIZE_LARGE}pt;
-                padding: 10px;
+                font-size: {config.FONT_SIZE_LARGE}pt; padding: 10px;
                 background-color: {config.ENTRY_BG_COLOR};
-                border: 1px solid #ccc;
-                border-radius: 5px;
+                border: 1px solid #ccc; border-radius: 5px;
             }}
             QTextEdit#ChatWindow {{
                 font-size: {config.FONT_SIZE_NORMAL}pt;
                 background-color: {config.TEXT_AREA_BG};
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 10px; /* Innenabstand für TextEdit */
+                border: 1px solid #ccc; border-radius: 5px; padding: 10px;
             }}
             QLabel#WelcomeLabel {{
-                 font-size: {config.FONT_SIZE_XLARGE}pt;
-                 font-weight: bold;
-                 color: {config.FG_COLOR};
-                 qproperty-alignment: 'AlignCenter'; /* PyQt Alignment */
+                 font-size: {config.FONT_SIZE_XLARGE}pt; font-weight: bold;
+                 color: {config.FG_COLOR}; qproperty-alignment: 'AlignCenter';
             }}
-            /* Trennlinie wird jetzt mit HTML gemacht */
         """
         self.setStyleSheet(stylesheet)
 
-    # --- Integrierte Auth-Methoden (unverändert) ---
     def _sanitize_username_for_id(self, username):
         sanitized = username.lower().replace(" ", "_").replace(".", "_dot_").replace("@", "_at_")
         sanitized = "".join(c for c in sanitized if c.isalnum() or c == '_')
@@ -243,7 +185,6 @@ class ChattyApp(QMainWindow):
             else: return False, "Falsches Passwort.", None
         except Exception as e: return False, f"Fehler beim Login: {e}", None
 
-    # --- GUI Logik / Callbacks ---
     def _set_login_register_state(self, enabled):
         state = bool(enabled)
         if self.login_button: self.login_button.setEnabled(state)
@@ -261,11 +202,9 @@ class ChattyApp(QMainWindow):
         if not username or not password:
             QMessageBox.warning(self, "Eingabe fehlt", "Bitte Benutzername und Passwort eingeben.")
             return
-
         self._set_login_register_state(False)
         success, message, user_info = self._verify_user(username, password)
         self._set_login_register_state(True)
-
         if success:
             self.current_user = user_info
             if self.firebase_initialized:
@@ -284,11 +223,9 @@ class ChattyApp(QMainWindow):
         if not username or not password:
             QMessageBox.warning(self, "Eingabe fehlt", "Bitte Benutzername und Passwort eingeben.")
             return
-
         self._set_login_register_state(False)
         success, message, user_doc_id = self._register_user(username, password)
         self._set_login_register_state(True)
-
         if success:
             self.current_user = username
             self.current_user_id = user_doc_id
@@ -313,7 +250,6 @@ class ChattyApp(QMainWindow):
              print("Fehler: Kein Benutzer eingeloggt.")
              self._show_start_screen()
              return
-
         success, error_msg = gemini_interface.initialize_gemini()
         if not success:
             QMessageBox.critical(self, "Gemini Fehler", error_msg)
@@ -321,10 +257,8 @@ class ChattyApp(QMainWindow):
                 firebase_logger.log_to_firestore("System", f"Initialisierungsfehler Gemini: {error_msg}", username=self.current_user)
             self._show_start_screen()
             return
-
         self.stacked_widget.setCurrentIndex(1)
         self.setWindowTitle(f"Chatty - Konversation ({self.current_user})")
-
         if self.chat_window:
             self.chat_window.clear()
             if config.INITIAL_HISTORY and len(config.INITIAL_HISTORY) > 1 and config.INITIAL_HISTORY[1]['role'] == 'model':
@@ -332,21 +266,11 @@ class ChattyApp(QMainWindow):
                 self._insert_html_bubble("Chatty: " + initial_bot_message_text, "bot")
                 if self.firebase_initialized:
                      firebase_logger.log_to_firestore("Chatty", initial_bot_message_text, username=self.current_user)
-
         if self.entry: self.entry.setFocus()
 
-    # --- Angepasste Methode für HTML Bubbles ---
     def _insert_html_bubble(self, full_message, speaker_type):
-        """Fügt eine Nachricht als gestyltes HTML in das QTextEdit ein."""
         if not self.chat_window: return
 
-        # Trennlinie (optional, kann auch als CSS border-top/bottom gemacht werden)
-        # Nur einfügen, wenn schon Text da ist
-        if not self.chat_window.toPlainText().strip() == "":
-             separator_html = f'<hr style="border: none; border-top: 1px solid {config.SEPARATOR_COLOR}; margin: 10px 5px;">'
-             self.chat_window.insertHtml(separator_html)
-
-        # Extrahiere Sprecher und Nachricht
         speaker = "Unbekannt"
         message_text = full_message
         if ":" in full_message:
@@ -354,68 +278,54 @@ class ChattyApp(QMainWindow):
             speaker = parts[0].strip()
             message_text = parts[1].strip()
 
-        # Passe Sprecher an, wenn es der aktuelle Benutzer ist
-        if speaker_type == "user":
-            speaker = self.current_user # Verwende den eingeloggten Namen
+        is_user_message = (speaker_type == "user")
+        if is_user_message:
+            speaker = self.current_user
 
-        # Style basierend auf Sprecher-Typ
         background_color = config.BUBBLE_COLOR
         text_color = config.BUBBLE_FG
         alignment = "left"
         margin_left = "10px"
-        margin_right = "70px" # Blase nach links verschieben
-        bubble_class = "bubble bot-bubble" # CSS-Klasse (optional)
+        margin_right = "70px"
 
-        if speaker_type == "user":
+        if is_user_message:
             alignment = "right"
-            margin_left = "70px" # Blase nach rechts verschieben
+            margin_left = "70px"
             margin_right = "10px"
-            # Optional: Andere Hintergrundfarbe für Benutzer
-            background_color = config.USER_BUBBLE_BG if hasattr(config, 'USER_BUBBLE_BG') else config.BUBBLE_COLOR
-            bubble_class = "bubble user-bubble"
+            background_color = getattr(config, 'USER_BUBBLE_BG', config.BUBBLE_COLOR)
         elif speaker_type == "error":
              background_color = config.ERROR_BUBBLE_BG
              text_color = config.ERROR_BUBBLE_FG
-             bubble_class = "bubble error-bubble"
 
-        # Erstelle HTML für die Blase
-        # \n in Nachrichten durch <br> ersetzen für HTML-Zeilenumbrüche
-        message_html = message_text.replace('\n', '<br>')
-        # Einfaches div mit inline styles (CSS-Klassen wären sauberer)
+        message_html = escape(message_text).replace('\n', '<br>')
+
         html_content = f"""
-        <div class="{bubble_class}" style="text-align: {alignment}; margin-left: {margin_left}; margin-right: {margin_right};">
-            <div style="display: inline-block; background-color: {background_color}; color: {text_color}; padding: 8px 12px; border-radius: 15px; text-align: left; max-width: 80%;">
-                <b>{speaker}:</b><br>
+        <div style="text-align: {alignment}; margin-left: {margin_left}; margin-right: {margin_right}; margin-bottom: {config.BUBBLE_VERTICAL_SPACING};">
+            <div style="display: inline-block; background-color: {background_color}; color: {text_color}; padding: 8px 12px; border-radius: {config.BUBBLE_BORDER_RADIUS}; text-align: left; max-width: 80%;">
+                <b>{escape(speaker)}:</b><br>
                 {message_html}
             </div>
         </div>
         """
 
-        # Füge HTML ein und scrolle nach unten
+        cursor = self.chat_window.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.chat_window.setTextCursor(cursor)
         self.chat_window.insertHtml(html_content)
-        # Stelle sicher, dass der Cursor am Ende ist und scrolle
-        self.chat_window.moveCursor(QTextCursor.MoveOperation.End)
-        self.chat_window.ensureCursorVisible() # Scrolle zum Cursor
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.chat_window.setTextCursor(cursor)
+        self.chat_window.ensureCursorVisible()
 
     def _send_message_command(self):
-        """Wird aufgerufen, wenn Senden-Button/Enter im Chat gedrückt wird."""
         if not self.current_user: return
-
-        user_input = self.entry.text().strip() # text() statt get()
+        user_input = self.entry.text().strip()
         if not user_input: return
-
-        # Zeige Benutzer-Bubble und logge
-        self._insert_html_bubble(f"Du: {user_input}", "user") # Verwende Typ "user"
+        self._insert_html_bubble(f"Du: {user_input}", "user")
         if self.firebase_initialized:
             firebase_logger.log_to_firestore("Du", user_input, username=self.current_user)
-        self.entry.clear() # clear() statt delete()
-
-        self._set_chat_ui_state(False) # Deaktivieren
-
-        # --- Hier wäre Platz für Threading, wenn Gemini lange dauert ---
-        # Für Einfachheit: direkter Aufruf
+        self.entry.clear()
+        self._set_chat_ui_state(False)
         success, response_or_error = gemini_interface.send_message_to_gemini(user_input)
-
         if success:
             self._insert_html_bubble("Chatty: " + response_or_error, "bot")
             if self.firebase_initialized:
@@ -425,35 +335,22 @@ class ChattyApp(QMainWindow):
             self._insert_html_bubble(error_display_text, "error")
             if self.firebase_initialized:
                 firebase_logger.log_to_firestore("Fehler", response_or_error, username=self.current_user)
-        # --- Ende direkter Aufruf ---
-
-        self._set_chat_ui_state(True) # Aktivieren
+        self._set_chat_ui_state(True)
 
     def _set_chat_ui_state(self, enabled):
-        """Aktiviert/Deaktiviert Chat-Eingabeelemente."""
         state = bool(enabled)
         if self.entry: self.entry.setEnabled(state)
         if self.send_button: self.send_button.setEnabled(state)
-        if self.exit_button: self.exit_button.setEnabled(state) # Zurück-Button
-        if state and self.entry:
-            self.entry.setFocus()
-        QApplication.processEvents() # UI aktualisieren
+        if self.exit_button: self.exit_button.setEnabled(state)
+        if state and self.entry: self.entry.setFocus()
+        QApplication.processEvents()
 
     def closeEvent(self, event):
-        """Wird aufgerufen, wenn das Fenster geschlossen wird (ersetzt protocol)."""
         self._on_closing()
-        event.accept() # Schließen akzeptieren
+        event.accept()
 
     def _on_closing(self):
         print("Anwendung wird geschlossen.")
         username_to_log = self.current_user or "Unbekannt"
         if self.firebase_initialized:
             firebase_logger.log_to_firestore("System", "Anwendung geschlossen.", username=username_to_log)
-        # QApplication.quit() wird implizit durch Schließen des letzten Fensters ausgelöst
-
-    def run(self):
-        """Zeigt das Hauptfenster an."""
-        if self.firebase_initialized:
-            firebase_logger.log_to_firestore("System", "Anwendung gestartet.", username="System")
-        self.show() # Zeige das QMainWindow
-        # Die QApplication Event-Schleife wird in run_chatty.py gestartet
